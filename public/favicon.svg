@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Relationship OS">
+  <defs>
+    <linearGradient id="bg" x1="10" y1="8" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7AAFD6" />
+      <stop offset="0.55" stop-color="#6BAFA7" />
+      <stop offset="1" stop-color="#9CCFB8" />
+    </linearGradient>
+    <linearGradient id="ring" x1="18" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FBF8" />
+      <stop offset="1" stop-color="#DDF2EF" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#bg)" />
+  <path
+    d="M21.5 33.4c0-6.6 4.3-11.5 10.1-11.5 3.2 0 5.5 1.4 7.4 3.9 1.8-2.5 4.2-3.9 7.4-3.9 5.8 0 10.1 4.9 10.1 11.5 0 8.4-7.4 13.4-17.5 20.1C28.9 46.8 21.5 41.8 21.5 33.4Z"
+    fill="none"
+    stroke="url(#ring)"
+    stroke-width="4.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="46.8" cy="18.8" r="5.1" fill="#DFA7B3" />
+</svg>

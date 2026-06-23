@@ -5,12 +5,18 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { defaultDashboardData } from "./dashboardData.js";
+import {
+  fetchDashboardData,
+  isSupabaseConfigured,
+  saveDashboardData,
+  uploadMemoryPhoto as uploadCloudMemoryPhoto,
+} from "./cloudDataStore.js";
 import { normalizeDateString } from "../utils/dateUtils.js";
 
-const STORAGE_KEY = "our-relationship-os:dashboard-data";
 const DashboardDataContext = createContext(null);
 
 const cloneData = (value) => JSON.parse(JSON.stringify(value));
@@ -111,12 +117,14 @@ function normalizeSharedNotes(notes) {
 
     return {
       personA: normalizeArrayItems(notes.personA, "note-a", (item) => ({
+        kind: "personal_note",
         ownerId: personA.id,
         authorName: personA.name,
         content: item.content ?? item.text ?? "",
         visibility: item.visibility ?? "visible_to_partner",
       })),
       personB: normalizeArrayItems(notes.personB, "note-b", (item) => ({
+        kind: "personal_note",
         ownerId: personB.id,
         authorName: personB.name,
         content: item.content ?? item.text ?? "",
@@ -130,12 +138,14 @@ function normalizeSharedNotes(notes) {
   const personB = getDefaultUserByRole("personB");
   return {
     personA: normalizeArrayItems(notes?.[firstKey], "note-a", (item) => ({
+      kind: "personal_note",
       ownerId: personA.id,
       authorName: personA.name,
       content: typeof item === "string" ? item : item.content ?? item.text ?? "",
       visibility: item.visibility ?? "visible_to_partner",
     })),
     personB: normalizeArrayItems(notes?.[secondKey], "note-b", (item) => ({
+      kind: "personal_note",
       ownerId: personB.id,
       authorName: personB.name,
       content: typeof item === "string" ? item : item.content ?? item.text ?? "",
@@ -168,6 +178,7 @@ function normalizeWishes(wishes) {
           groups.secretWishes.push({
             id: baseId,
             ownerId: owner.id,
+            wishType: "secret_wish",
             title: item.title ?? "Secret wish",
             description: item.description ?? item.text ?? "",
             unlockDate: normalizeDateString(item.unlockDate) || "2026-07-01",
@@ -176,6 +187,7 @@ function normalizeWishes(wishes) {
         } else if (legacyType === "Shared") {
           groups.sharedDreams.push({
             id: baseId,
+            wishType: "shared_dream",
             title: item.title ?? "Shared dream",
             description: item.description ?? item.text ?? "",
             status: "Planned",
@@ -187,6 +199,7 @@ function normalizeWishes(wishes) {
             id: baseId,
             ownerId: owner.id,
             ownerName: owner.name,
+            wishType: "gift_hint",
             title: item.title ?? "Gift hint",
             description: item.description ?? item.text ?? "",
             category: item.category ?? "Personal",
@@ -211,6 +224,7 @@ function normalizeWishes(wishes) {
         return {
           ownerId: owner.id,
           ownerName: owner.name,
+          wishType: "gift_hint",
           title: item.title ?? "",
           description: item.description ?? "",
           category: item.category ?? "",
@@ -230,6 +244,7 @@ function normalizeWishes(wishes) {
 
         return {
           ownerId: owner.id,
+          wishType: "secret_wish",
           title: item.title ?? "",
           description: item.description ?? "",
           unlockDate: normalizeDateString(item.unlockDate),
@@ -242,6 +257,7 @@ function normalizeWishes(wishes) {
       "shared",
       (item) => ({
         title: item.title ?? "",
+        wishType: "shared_dream",
         description: item.description ?? "",
         status: item.status ?? "Planned",
         visibility: item.visibility ?? "shared",
@@ -302,6 +318,7 @@ export function normalizeDashboardData(rawData) {
 
         return {
           label: item.label ?? "",
+          kind: "memory_photo",
           ownerId: owner.id,
           uploadedBy: owner.name,
           imageUrl: item.imageUrl ?? item.src ?? "",
@@ -360,10 +377,36 @@ export function normalizeDashboardData(rawData) {
 
         return {
           ownerId: owner.id,
+          kind: "gratitude",
           authorName: owner.name,
           message: item.message ?? item.text ?? "",
           visibility: item.visibility ?? "shared",
           locked: item.locked ?? true,
+        };
+      },
+    ),
+    footprints: normalizeArrayItems(
+      raw.footprints ?? defaults.footprints,
+      "footprint",
+      (item, index) => {
+        const owner = resolveOwner(item, index, "alternate", [
+          "addedBy",
+          "added_by",
+          "ownerName",
+        ]);
+        const city = item.city ?? "";
+        const state = item.state ?? "";
+
+        return {
+          city,
+          state,
+          label: item.label ?? (city && state ? `${city}, ${state}` : ""),
+          note: item.note ?? "",
+          dateVisited: normalizeDateString(item.dateVisited ?? item.date_visited),
+          ownerId: item.ownerId ?? item.owner_id ?? owner.id,
+          addedBy: item.addedBy ?? item.added_by ?? owner.name,
+          visibility: item.visibility ?? "shared",
+          kind: "footprint",
         };
       },
     ),
@@ -394,45 +437,86 @@ export function normalizeDashboardData(rawData) {
 }
 
 function readStoredData() {
-  if (typeof window === "undefined") {
-    return normalizeDashboardData(defaultDashboardData);
-  }
-
-  const storedValue = window.localStorage.getItem(STORAGE_KEY);
-  if (!storedValue) {
-    return normalizeDashboardData(defaultDashboardData);
-  }
-
-  try {
-    return normalizeDashboardData(JSON.parse(storedValue));
-  } catch {
-    return normalizeDashboardData(defaultDashboardData);
-  }
+  return normalizeDashboardData(defaultDashboardData);
 }
 
 export function DashboardDataProvider({ children }) {
   const [dashboardData, setDashboardData] = useState(readStoredData);
   const [savedAt, setSavedAt] = useState(null);
+  const [cloudStatus, setCloudStatus] = useState(
+    isSupabaseConfigured ? "loading" : "demo",
+  );
+  const latestDataRef = useRef(dashboardData);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dashboardData));
-      setSavedAt(new Date());
-    } catch {
-      setSavedAt(null);
-    }
+    latestDataRef.current = dashboardData;
   }, [dashboardData]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCloudData() {
+      if (!isSupabaseConfigured) {
+        setCloudStatus("demo");
+        return;
+      }
+
+      try {
+        const cloudData = normalizeDashboardData(await fetchDashboardData());
+        if (!isMounted) return;
+        latestDataRef.current = cloudData;
+        setDashboardData(cloudData);
+        setCloudStatus("cloud");
+        setSavedAt(new Date());
+      } catch {
+        if (!isMounted) return;
+        setDashboardData(normalizeDashboardData(defaultDashboardData));
+        setCloudStatus("error");
+      }
+    }
+
+    loadCloudData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const updateDashboardData = useCallback((updater) => {
-    setDashboardData((currentData) =>
-      normalizeDashboardData(
+    setDashboardData((currentData) => {
+      const nextData = normalizeDashboardData(
         typeof updater === "function" ? updater(cloneData(currentData)) : updater,
-      ),
-    );
+      );
+      latestDataRef.current = nextData;
+
+      if (isSupabaseConfigured) {
+        setCloudStatus("saving");
+        saveDashboardData(nextData)
+          .then(() => {
+            setSavedAt(new Date());
+            setCloudStatus("cloud");
+          })
+          .catch(() => {
+            setCloudStatus("error");
+          });
+      } else {
+        setCloudStatus("demo");
+      }
+
+      return nextData;
+    });
   }, []);
 
   const resetToDefault = useCallback(() => {
-    setDashboardData(normalizeDashboardData(defaultDashboardData));
+    updateDashboardData(normalizeDashboardData(defaultDashboardData));
+  }, [updateDashboardData]);
+
+  const uploadPhotoFile = useCallback((file, currentUser) => {
+    if (!isSupabaseConfigured) {
+      return Promise.reject(new Error("Supabase Storage is not configured."));
+    }
+
+    return uploadCloudMemoryPhoto(file, currentUser);
   }, []);
 
   const value = useMemo(
@@ -441,9 +525,18 @@ export function DashboardDataProvider({ children }) {
       setDashboardData: updateDashboardData,
       resetToDefault,
       savedAt,
-      storageKey: STORAGE_KEY,
+      cloudStatus,
+      isCloudConfigured: isSupabaseConfigured,
+      uploadPhotoFile,
     }),
-    [dashboardData, resetToDefault, savedAt, updateDashboardData],
+    [
+      cloudStatus,
+      dashboardData,
+      resetToDefault,
+      savedAt,
+      updateDashboardData,
+      uploadPhotoFile,
+    ],
   );
 
   return createElement(DashboardDataContext.Provider, { value }, children);

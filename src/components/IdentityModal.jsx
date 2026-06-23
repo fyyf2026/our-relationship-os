@@ -3,7 +3,7 @@ export default function IdentityModal({ users, onSelectUser }) {
     <div className="identity-modal-backdrop" role="presentation">
       <div className="identity-modal" role="dialog" aria-modal="true">
         <div className="mb-6 text-center">
-          <p className="mb-3 inline-flex rounded-full border border-primary/20 bg-[#EAF8F5] px-3 py-1 text-xs font-semibold text-primary">
+          <p className="mb-3 inline-flex rounded-full border border-primary/20 bg-[#EDF5FF] px-3 py-1 text-xs font-semibold text-primary">
             Relationship OS
           </p>
           <h2 className="text-3xl font-semibold text-ink">Who are you?</h2>

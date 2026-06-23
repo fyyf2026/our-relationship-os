@@ -24,7 +24,7 @@ export default function SharedNotes() {
         {noteColumns.map(({ person, notes }) => (
           <div key={person} className="rounded-[24px] bg-white/42 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#EAF8F5] text-primary">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#EDF5FF] text-primary">
                 <NotebookPen className="h-4 w-4" />
               </div>
               <h3 className="font-semibold text-ink">{person} posted</h3>

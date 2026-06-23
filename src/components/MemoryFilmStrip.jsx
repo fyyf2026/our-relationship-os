@@ -66,8 +66,9 @@ function PhotoFrame({ photo }) {
 
 export default function MemoryFilmStrip() {
   const inputRef = useRef(null);
-  const [uploadStatus, setUploadStatus] = useState("Memories saved locally");
-  const { dashboardData, setDashboardData } = useDashboardData();
+  const [uploadStatus, setUploadStatus] = useState("Memories sync when cloud is configured");
+  const { dashboardData, setDashboardData, isCloudConfigured, uploadPhotoFile } =
+    useDashboardData();
   const { currentUser } = useCurrentUser();
   const photos = dashboardData.memoryPhotos;
   const scrollingPhotos = [...photos, ...photos];
@@ -89,29 +90,49 @@ export default function MemoryFilmStrip() {
 
     if (!files.length) return;
 
-    setUploadStatus("Preparing photos...");
+    setUploadStatus(
+      isCloudConfigured ? "Uploading photos to cloud..." : "Preparing demo photos...",
+    );
 
     try {
       const uploadedPhotos = await Promise.all(
-        files.map(async (file) => ({
-          id: createId("memory"),
-          label: file.name.replace(/\.[^/.]+$/, "") || "Memory",
-          caption: file.name.replace(/\.[^/.]+$/, "") || "Memory",
-          ownerId: currentUser.id,
-          uploadedBy: currentUser.name,
-          imageUrl: await compressImage(file),
-          visibility: "shared",
-          locked: true,
-          createdAt: new Date().toISOString(),
-          uploadedAt: new Date().toISOString(),
-        })),
+        files.map(async (file) => {
+          const fallbackPreview = await compressImage(file);
+          let imageUrl = fallbackPreview;
+
+          if (isCloudConfigured) {
+            try {
+              imageUrl = await uploadPhotoFile(file, currentUser);
+            } catch {
+              imageUrl = fallbackPreview;
+            }
+          }
+
+          return {
+            id: createId("memory"),
+            kind: "memory_photo",
+            label: file.name.replace(/\.[^/.]+$/, "") || "Memory",
+            caption: file.name.replace(/\.[^/.]+$/, "") || "Memory",
+            ownerId: currentUser.id,
+            uploadedBy: currentUser.name,
+            imageUrl,
+            visibility: "shared",
+            locked: true,
+            createdAt: new Date().toISOString(),
+            uploadedAt: new Date().toISOString(),
+          };
+        }),
       );
 
       setDashboardData((data) => {
         data.memoryPhotos = [...uploadedPhotos, ...data.memoryPhotos];
         return data;
       });
-      setUploadStatus(`${uploadedPhotos.length} photo${uploadedPhotos.length > 1 ? "s" : ""} saved locally`);
+      setUploadStatus(
+        `${uploadedPhotos.length} photo${uploadedPhotos.length > 1 ? "s" : ""} ${
+          isCloudConfigured ? "synced" : "added to demo session"
+        }`,
+      );
     } catch {
       setUploadStatus("Could not add these photos. Try smaller files.");
     } finally {

@@ -1,16 +1,16 @@
 const statusStyles = {
-  Resolved: "border-[#BFE4D6] bg-[#EAF8F5] text-[#4F857F]",
-  Pending: "border-[#BFD9EA] bg-[#EEF7FB] text-[#5D83A1]",
-  Upcoming: "border-[#CDECE5] bg-[#F2FBF8] text-[#4F857F]",
-  Locked: "border-[#C7DADB] bg-[#F3F8FA] text-[#647C7D]",
-  Completed: "border-[#BFE4D6] bg-[#EAF8F5] text-[#4F857F]",
-  Opened: "border-[#BFD9EA] bg-[#EEF7FB] text-[#5D83A1]",
-  Shared: "border-[#CDECE5] bg-[#F2FBF8] text-[#4F857F]",
-  High: "border-[#A7D8D0] bg-[#EAF8F5] text-[#3F7D76]",
-  Medium: "border-[#BFD9EA] bg-[#EEF7FB] text-[#5D83A1]",
-  Low: "border-[#D5EAE3] bg-[#F7FBF8] text-[#6F8585]",
-  Planned: "border-[#CDECE5] bg-[#F2FBF8] text-[#4F857F]",
-  "In Progress": "border-[#BFD9EA] bg-[#EEF7FB] text-[#5D83A1]",
+  Resolved: "border-[#BFD6F0] bg-[#EDF5FF] text-[#2F4F6F]",
+  Pending: "border-[#E7C2C9] bg-[#F5E3E7] text-[#8E6D78]",
+  Upcoming: "border-[#BFD6F0] bg-[#F5F8FC] text-[#2F4F6F]",
+  Locked: "border-[#D6DFEA] bg-[#F5F8FC] text-[#718096]",
+  Completed: "border-[#BFD6F0] bg-[#EDF5FF] text-[#2F4F6F]",
+  Opened: "border-[#BFD6F0] bg-[#EDF5FF] text-[#2F4F6F]",
+  Shared: "border-[#E7C2C9] bg-[#F5E3E7] text-[#8E6D78]",
+  High: "border-[#E7C2C9] bg-[#F5E3E7] text-[#8E6D78]",
+  Medium: "border-[#BFD6F0] bg-[#EDF5FF] text-[#2F4F6F]",
+  Low: "border-[#D6DFEA] bg-[#F8FBFF] text-[#718096]",
+  Planned: "border-[#BFD6F0] bg-[#F5F8FC] text-[#2F4F6F]",
+  "In Progress": "border-[#E7C2C9] bg-[#F5E3E7] text-[#8E6D78]",
 };
 
 export default function StatusTag({ status }) {

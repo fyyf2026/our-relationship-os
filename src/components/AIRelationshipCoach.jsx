@@ -33,9 +33,9 @@ export default function AIRelationshipCoach() {
       actionLabel="View Weekly Report"
       actionIcon={Eye}
       actionVariant="primary"
-      className="bg-gradient-to-br from-white/88 via-[#EAF8F5]/84 to-[#EEF7FB]/82"
+      className="bg-gradient-to-br from-white/88 via-[#EDF5FF]/84 to-[#F5E3E7]/68"
     >
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAF8F5] text-primary">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EDF5FF] text-primary">
         <Brain className="h-6 w-6" />
       </div>
       <p className="text-sm font-semibold text-ink">This week&apos;s insight:</p>

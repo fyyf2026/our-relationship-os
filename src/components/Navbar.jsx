@@ -6,6 +6,7 @@ import { useDashboardData } from "../data/dataStore.js";
 const navTargets = {
   Home: "/#top",
   Memories: "/#memories",
+  Footprints: "/#footprints",
   "Conflict Center": "/#conflict-center",
   Future: "/#future",
   "Wish Box": "/#wish-box",
@@ -59,11 +60,11 @@ export default function Navbar() {
             <div className="flex -space-x-2">
               <Avatar
                 initials={personAInitial}
-                className="bg-[#EAF8F5] text-[#4F857F]"
+                className="bg-[#EDF5FF] text-[#2F4F6F]"
               />
               <Avatar
                 initials={personBInitial}
-                className="bg-[#EEF7FB] text-[#5D83A1]"
+                className="bg-[#F5E3E7] text-[#8E6D78]"
               />
             </div>
             {currentUser ? (
@@ -110,11 +111,11 @@ export default function Navbar() {
               <div className="flex -space-x-2">
                 <Avatar
                   initials={personAInitial}
-                  className="bg-[#EAF8F5] text-[#4F857F]"
+                  className="bg-[#EDF5FF] text-[#2F4F6F]"
                 />
                 <Avatar
                   initials={personBInitial}
-                  className="bg-[#EEF7FB] text-[#5D83A1]"
+                  className="bg-[#F5E3E7] text-[#8E6D78]"
                 />
               </div>
               <div className="grid justify-items-end gap-1">

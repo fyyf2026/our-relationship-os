@@ -3,9 +3,9 @@ import { useDashboardData } from "../data/dataStore.js";
 import SectionCard from "./SectionCard.jsx";
 
 const toneStyles = {
-  sage: "bg-[#EAF8F5] text-[#4F857F]",
-  clay: "bg-[#EEF7FB] text-[#5D83A1]",
-  accent: "bg-[#F2FBF8] text-primary",
+  sage: "bg-[#EDF5FF] text-[#2F4F6F]",
+  clay: "bg-[#F5E3E7] text-[#8E6D78]",
+  accent: "bg-primary/10 text-primary",
 };
 
 export default function FutureVision() {

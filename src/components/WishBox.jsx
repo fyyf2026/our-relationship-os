@@ -10,7 +10,7 @@ function WishGroup({ title, description, icon: Icon, children }) {
   return (
     <div className="rounded-[24px] border border-stone-900/6 bg-white/44 p-4">
       <div className="mb-4 flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EAF8F5] text-primary">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EDF5FF] text-primary">
           <Icon className="h-4 w-4" />
         </div>
         <div>

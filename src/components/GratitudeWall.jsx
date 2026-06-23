@@ -23,7 +23,7 @@ export default function GratitudeWall() {
           >
             <div className="mb-4 flex items-center justify-between">
               <p className="font-semibold text-ink">{item.authorName}</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EAF8F5] text-primary">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F5E3E7] text-accent">
                 <Heart className="h-4 w-4" />
               </div>
             </div>

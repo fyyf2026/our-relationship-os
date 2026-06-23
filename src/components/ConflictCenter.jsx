@@ -50,7 +50,7 @@ export default function ConflictCenter() {
         </table>
       </div>
 
-      <div className="mt-4 grid gap-4 rounded-[26px] border border-[#CDECE5] bg-gradient-to-br from-[#F7FBF8] via-[#EAF8F5] to-[#EEF7FB] p-5 shadow-insetSoft md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="mt-4 grid gap-4 rounded-[26px] border border-[#DCEBFA] bg-gradient-to-br from-white via-[#EDF5FF] to-[#F5E3E7] p-5 shadow-insetSoft md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/78 text-primary shadow-sm">
           <Brain className="h-6 w-6" />
         </div>

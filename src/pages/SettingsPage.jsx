@@ -1,5 +1,6 @@
 import {
   Check,
+  MapPin,
   Plus,
   RotateCcw,
   Save,
@@ -51,7 +52,7 @@ function TextInput({
       autoComplete="off"
       data-lpignore="true"
       onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-2xl border border-stone-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 read-only:bg-stone-100/70 read-only:text-muted disabled:cursor-not-allowed disabled:bg-[#EEF7FB]/70 disabled:text-muted"
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 read-only:bg-slate-100/70 read-only:text-muted disabled:cursor-not-allowed disabled:bg-[#EDF5FF]/70 disabled:text-muted"
     />
   );
 }
@@ -66,7 +67,7 @@ function TextArea({ value, onChange, rows = 3, disabled = false, title }) {
       autoComplete="off"
       data-lpignore="true"
       onChange={(event) => onChange(event.target.value)}
-      className="w-full resize-y rounded-2xl border border-stone-900/10 bg-white/75 px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-muted/70 focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EEF7FB]/70 disabled:text-muted"
+      className="w-full resize-y rounded-2xl border border-slate-900/10 bg-white/75 px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-muted/70 focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EDF5FF]/70 disabled:text-muted"
     />
   );
 }
@@ -78,7 +79,7 @@ function SelectInput({ value, onChange, options, disabled = false, title }) {
       disabled={disabled}
       title={title}
       onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-2xl border border-stone-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EEF7FB]/70 disabled:text-muted"
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EDF5FF]/70 disabled:text-muted"
     >
       {options.map((option) => (
         <option key={option} value={option}>
@@ -98,7 +99,7 @@ function NumberInput({ value, onChange, min = 0, max = 100, disabled = false }) 
       value={value}
       disabled={disabled}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="w-full rounded-2xl border border-stone-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EEF7FB]/70 disabled:text-muted"
+      className="w-full rounded-2xl border border-slate-900/10 bg-white/75 px-4 py-3 text-sm text-ink outline-none transition focus:border-primary/55 focus:bg-white focus:ring-4 focus:ring-primary/10 disabled:cursor-not-allowed disabled:bg-[#EDF5FF]/70 disabled:text-muted"
     />
   );
 }
@@ -145,7 +146,7 @@ function IconButton({ label, onClick, disabled = false, title }) {
       title={title ?? label}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-stone-900/10 bg-white/75 text-muted transition hover:border-primary/35 hover:bg-[#EAF8F5] hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-900/10 bg-white/75 text-muted transition hover:border-primary/35 hover:bg-[#EDF5FF] hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
     >
       <Trash2 className="h-4 w-4" />
     </button>
@@ -153,8 +154,14 @@ function IconButton({ label, onClick, disabled = false, title }) {
 }
 
 export default function SettingsPage() {
-  const { dashboardData, setDashboardData, resetToDefault, savedAt } =
-    useDashboardData();
+  const {
+    dashboardData,
+    setDashboardData,
+    resetToDefault,
+    savedAt,
+    cloudStatus,
+    isCloudConfigured,
+  } = useDashboardData();
   const { currentUser, users } = useCurrentUser();
   const { profile } = dashboardData;
   const partnerNames = `${profile.personAName} & ${profile.personBName}`;
@@ -236,6 +243,48 @@ export default function SettingsPage() {
         visibility: "shared",
         locked: true,
       });
+      return data;
+    });
+  };
+
+  const addFootprint = () => {
+    setDashboardData((data) => {
+      if (!currentUser) return data;
+      data.footprints.push({
+        id: createId("footprint"),
+        kind: "footprint",
+        city: "New City",
+        state: "",
+        label: "New City",
+        note: "",
+        dateVisited: "",
+        ownerId: currentUser.id,
+        addedBy: currentUser.name,
+        visibility: "shared",
+      });
+      return data;
+    });
+  };
+
+  const updateFootprint = (index, field, value) => {
+    setDashboardData((data) => {
+      const item = data.footprints[index];
+      if (!canEditItem(currentUser, item)) return data;
+      data.footprints[index][field] = value;
+      if (field === "city" || field === "state") {
+        const city = data.footprints[index].city?.trim() ?? "";
+        const state = data.footprints[index].state?.trim().toUpperCase() ?? "";
+        data.footprints[index].state = state;
+        data.footprints[index].label = city && state ? `${city}, ${state}` : city;
+      }
+      return data;
+    });
+  };
+
+  const removeFootprint = (index) => {
+    setDashboardData((data) => {
+      if (!canEditItem(currentUser, data.footprints[index])) return data;
+      data.footprints.splice(index, 1);
       return data;
     });
   };
@@ -413,14 +462,28 @@ export default function SettingsPage() {
               Settings
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted sm:text-base">
-              Edit the private dashboard for {partnerNames}. Changes save to this
-              browser automatically.
+              Edit the private cloud-synced operating system for {partnerNames}.
+              With Supabase configured, changes are shared across devices.
             </p>
+            {!isCloudConfigured ? (
+              <p className="mt-3 inline-flex rounded-full border border-[#D9A7B0]/35 bg-[#F5E3E7]/70 px-3 py-2 text-xs font-semibold text-[#9E6F7A]">
+                Cloud sync is not configured. Showing demo data.
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <span className="rounded-full border border-white/80 bg-white/70 px-3 py-2 text-xs font-semibold text-muted">
               {savedAt ? `Saved ${savedAt.toLocaleTimeString()}` : "Ready"}
+            </span>
+            <span className="rounded-full border border-white/80 bg-white/70 px-3 py-2 text-xs font-semibold text-muted">
+              {cloudStatus === "cloud"
+                ? "Cloud synced"
+                : cloudStatus === "saving"
+                  ? "Saving..."
+                  : cloudStatus === "error"
+                    ? "Cloud sync issue"
+                    : "Demo mode"}
             </span>
             <ActionButton icon={Save} variant="primary" onClick={saveNow}>
               Save
@@ -456,30 +519,10 @@ export default function SettingsPage() {
           <Field label="Days Together">
             <TextInput value={String(daysTogether)} readOnly onChange={() => {}} />
           </Field>
-          <Field label="Relationship Temperature">
-            <NumberInput
-              value={profile.relationshipTemperature}
-              onChange={(value) =>
-                updateProfile("relationshipTemperature", value)
-              }
-            />
-          </Field>
           <Field label="Last Date Summary">
             <TextInput
               value={profile.lastDateLabel}
               onChange={(value) => updateProfile("lastDateLabel", value)}
-            />
-          </Field>
-          <Field label="Hero Subtitle" className="md:col-span-2">
-            <TextArea
-              value={profile.heroSubtitle}
-              onChange={(value) => updateProfile("heroSubtitle", value)}
-            />
-          </Field>
-          <Field label="Temperature Status Text">
-            <TextArea
-              value={profile.temperatureStatus}
-              onChange={(value) => updateProfile("temperatureStatus", value)}
             />
           </Field>
         </div>
@@ -648,6 +691,80 @@ export default function SettingsPage() {
                     title={!editable ? message : undefined}
                     onClick={() => removeMemoryPhoto(index)}
                   />
+                </div>
+              </RowCard>
+            );
+          })}
+        </div>
+      </ManagerSection>
+
+      <ManagerSection
+        id="footprints-manager"
+        title="Our Footprints"
+        description="Manage cities you have visited together. Only the person who added a footprint can edit or delete it."
+        actionLabel="Add City"
+        onAdd={addFootprint}
+      >
+        <div className="grid gap-3">
+          {dashboardData.footprints.map((item, index) => {
+            const editable = canEditItem(currentUser, item);
+            const message = getPermissionMessage(users, item);
+
+            return (
+              <RowCard key={item.id}>
+                <div className="grid gap-3 lg:grid-cols-[1fr_0.45fr_0.8fr_1.4fr_auto] lg:items-end">
+                  <Field label="City">
+                    <TextInput
+                      value={item.city}
+                      disabled={!editable}
+                      title={!editable ? message : undefined}
+                      onChange={(value) => updateFootprint(index, "city", value)}
+                    />
+                  </Field>
+                  <Field label="State">
+                    <TextInput
+                      value={item.state}
+                      disabled={!editable}
+                      title={!editable ? message : undefined}
+                      onChange={(value) =>
+                        updateFootprint(index, "state", value.toUpperCase())
+                      }
+                    />
+                  </Field>
+                  <Field label="Date Visited">
+                    <TextInput
+                      type="date"
+                      value={item.dateVisited}
+                      disabled={!editable}
+                      title={!editable ? message : undefined}
+                      onChange={(value) =>
+                        updateFootprint(index, "dateVisited", value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Note">
+                    <TextInput
+                      value={item.note}
+                      disabled={!editable}
+                      title={!editable ? message : undefined}
+                      onChange={(value) => updateFootprint(index, "note", value)}
+                    />
+                  </Field>
+                  <IconButton
+                    label="Delete footprint"
+                    disabled={!editable}
+                    title={!editable ? message : undefined}
+                    onClick={() => removeFootprint(index)}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="owner-badge">
+                    <MapPin className="mr-1 h-3 w-3" />
+                    Added by {item.addedBy}
+                  </span>
+                  {!editable ? (
+                    <span className="view-only-badge">View only</span>
+                  ) : null}
                 </div>
               </RowCard>
             );
@@ -1146,7 +1263,7 @@ export default function SettingsPage() {
             </Field>
             <div className="flex items-center gap-2 rounded-2xl border border-[#C8D8CC] bg-[#EEF5EF] px-4 py-3 text-sm font-semibold text-[#58735F] sm:col-span-2">
               <Check className="h-4 w-4" />
-              Auto-saved to localStorage
+              {isCloudConfigured ? "Auto-saved to Supabase" : "Demo mode only"}
             </div>
           </div>
         </div>

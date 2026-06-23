@@ -23,7 +23,7 @@ export default function ImportantDates() {
             key={date.id}
             className="surface-row grid gap-4 rounded-card p-4 sm:grid-cols-[auto_1fr_auto_auto] sm:items-center"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EAF8F5] text-primary">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EDF5FF] text-primary">
               <CalendarDays className="h-5 w-5" />
             </div>
             <div className="min-w-0">

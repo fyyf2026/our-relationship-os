@@ -446,7 +446,9 @@ export function DashboardDataProvider({ children }) {
   const [cloudStatus, setCloudStatus] = useState(
     isSupabaseConfigured ? "loading" : "demo",
   );
+  const [cloudError, setCloudError] = useState("");
   const latestDataRef = useRef(dashboardData);
+  const saveQueueRef = useRef(Promise.resolve());
 
   useEffect(() => {
     latestDataRef.current = dashboardData;
@@ -467,11 +469,12 @@ export function DashboardDataProvider({ children }) {
         latestDataRef.current = cloudData;
         setDashboardData(cloudData);
         setCloudStatus("cloud");
+        setCloudError("");
         setSavedAt(new Date());
-      } catch {
+      } catch (error) {
         if (!isMounted) return;
-        setDashboardData(normalizeDashboardData(defaultDashboardData));
         setCloudStatus("error");
+        setCloudError(error.message || "Could not load Supabase data.");
       }
     }
 
@@ -491,16 +494,27 @@ export function DashboardDataProvider({ children }) {
 
       if (isSupabaseConfigured) {
         setCloudStatus("saving");
-        saveDashboardData(nextData)
+        setCloudError("");
+
+        const saveTask = saveQueueRef.current
+          .catch(() => {})
+          .then(() => saveDashboardData(nextData));
+
+        saveQueueRef.current = saveTask;
+
+        saveTask
           .then(() => {
             setSavedAt(new Date());
             setCloudStatus("cloud");
+            setCloudError("");
           })
-          .catch(() => {
+          .catch((error) => {
             setCloudStatus("error");
+            setCloudError(error.message || "Could not save Supabase data.");
           });
       } else {
         setCloudStatus("demo");
+        setCloudError("");
       }
 
       return nextData;
@@ -526,11 +540,13 @@ export function DashboardDataProvider({ children }) {
       resetToDefault,
       savedAt,
       cloudStatus,
+      cloudError,
       isCloudConfigured: isSupabaseConfigured,
       uploadPhotoFile,
     }),
     [
       cloudStatus,
+      cloudError,
       dashboardData,
       resetToDefault,
       savedAt,

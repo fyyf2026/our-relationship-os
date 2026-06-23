@@ -33,7 +33,10 @@ export async function supabaseRequest(path, options = {}) {
   if (response.status === 204) return null;
 
   const contentType = response.headers.get("content-type") ?? "";
-  return contentType.includes("application/json") ? response.json() : response.text();
+  const text = await response.text();
+  if (!text) return null;
+
+  return contentType.includes("application/json") ? JSON.parse(text) : text;
 }
 
 export async function uploadSupabaseObject(bucket, filePath, file) {

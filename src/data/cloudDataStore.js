@@ -34,19 +34,13 @@ async function deleteAll(table) {
   });
 }
 
-async function insertRows(table, rows) {
-  if (!rows.length) return;
+async function deleteRows(table, ids) {
+  if (!ids.length) return;
 
-  await supabaseRequest(apiPath(table, ""), {
-    method: "POST",
+  await supabaseRequest(apiPath(table, `id=in.(${ids.join(",")})`), {
+    method: "DELETE",
     headers: { Prefer: "return=minimal" },
-    body: JSON.stringify(rows),
   });
-}
-
-async function replaceTable(table, rows) {
-  await deleteAll(table);
-  await insertRows(table, rows);
 }
 
 function upsertRows(table, rows, conflictKey = "id") {
@@ -59,6 +53,25 @@ function upsertRows(table, rows, conflictKey = "id") {
     },
     body: JSON.stringify(rows),
   });
+}
+
+async function syncTable(table, rows) {
+  const nextRows = rows.filter((row) => row.id);
+
+  if (!nextRows.length) {
+    await deleteAll(table);
+    return;
+  }
+
+  await upsertRows(table, nextRows);
+
+  const existingRows = await fetchTable(table, "select=id");
+  const nextIds = new Set(nextRows.map((row) => row.id));
+  const staleIds = existingRows
+    .map((row) => row.id)
+    .filter((id) => id && !nextIds.has(id));
+
+  await deleteRows(table, staleIds);
 }
 
 function groupNotesByOwner(rows, users) {
@@ -418,14 +431,14 @@ export async function saveDashboardData(data) {
 
   const rows = dashboardToCloudRows(data);
   await upsertRows("relationship_profile", rows.relationship_profile);
-  await replaceTable("important_dates", rows.important_dates);
-  await replaceTable("shared_notes", rows.shared_notes);
-  await replaceTable("conflict_entries", rows.conflict_entries);
-  await replaceTable("future_vision_items", rows.future_vision_items);
-  await replaceTable("gratitude_items", rows.gratitude_items);
-  await replaceTable("wishes", rows.wishes);
-  await replaceTable("memory_photos", rows.memory_photos);
-  await replaceTable("footprints", rows.footprints);
+  await syncTable("important_dates", rows.important_dates);
+  await syncTable("shared_notes", rows.shared_notes);
+  await syncTable("conflict_entries", rows.conflict_entries);
+  await syncTable("future_vision_items", rows.future_vision_items);
+  await syncTable("gratitude_items", rows.gratitude_items);
+  await syncTable("wishes", rows.wishes);
+  await syncTable("memory_photos", rows.memory_photos);
+  await syncTable("footprints", rows.footprints);
   await upsertRows("ai_coach_metrics", rows.ai_coach_metrics);
 
   return data;

@@ -7,7 +7,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 
 function RoutedApp() {
   const isSettingsPage = window.location.pathname === "/settings";
-  const { cloudStatus, isCloudConfigured } = useDashboardData();
+  const { cloudError, cloudStatus, isCloudConfigured } = useDashboardData();
 
   return (
     <div className="min-h-screen pb-12">
@@ -21,7 +21,7 @@ function RoutedApp() {
       ) : cloudStatus === "error" ? (
         <div className="mx-auto mt-4 max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-full border border-[#D9A7B0]/30 bg-white/72 px-4 py-2 text-center text-xs font-semibold text-[#8E6D78] shadow-sm backdrop-blur-xl">
-            Cloud sync needs attention. Showing the latest available data.
+            Cloud sync error: {cloudError || "Please check Supabase settings."}
           </div>
         </div>
       ) : null}

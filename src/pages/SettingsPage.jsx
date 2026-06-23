@@ -159,6 +159,7 @@ export default function SettingsPage() {
     setDashboardData,
     resetToDefault,
     savedAt,
+    cloudError,
     cloudStatus,
     isCloudConfigured,
   } = useDashboardData();
@@ -468,6 +469,10 @@ export default function SettingsPage() {
             {!isCloudConfigured ? (
               <p className="mt-3 inline-flex rounded-full border border-[#D9A7B0]/35 bg-[#F5E3E7]/70 px-3 py-2 text-xs font-semibold text-[#9E6F7A]">
                 Cloud sync is not configured. Showing demo data.
+              </p>
+            ) : cloudStatus === "error" ? (
+              <p className="mt-3 inline-flex rounded-full border border-[#D9A7B0]/35 bg-[#F5E3E7]/70 px-3 py-2 text-xs font-semibold text-[#9E6F7A]">
+                Cloud sync error: {cloudError || "Please check Supabase settings."}
               </p>
             ) : null}
           </div>

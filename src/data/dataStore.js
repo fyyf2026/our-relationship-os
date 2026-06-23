@@ -363,6 +363,14 @@ export function normalizeDashboardData(rawData) {
         ),
         items: normalizeArrayItems(group.items, `future-${groupIndex}`, (item) => ({
           text: typeof item === "string" ? item : item.text ?? "",
+          description: typeof item === "string" ? "" : item.description ?? "",
+          status: typeof item === "string" ? "Planned" : item.status ?? "Planned",
+          visibility:
+            typeof item === "string" ? "shared" : item.visibility ?? "shared",
+          lastEditedBy:
+            typeof item === "string"
+              ? ""
+              : normalizeDisplayName(item.lastEditedBy, "personA"),
         })),
       }),
     ),
@@ -440,8 +448,43 @@ function readStoredData() {
   return normalizeDashboardData(defaultDashboardData);
 }
 
+function collectIds(data) {
+  return {
+    important_dates: data.importantDates.map((item) => item.id),
+    shared_notes: [
+      ...data.sharedNotes.personA.map((item) => item.id),
+      ...data.sharedNotes.personB.map((item) => item.id),
+    ],
+    conflict_entries: data.conflictEntries.map((item) => item.id),
+    future_vision_items: data.futureVision.flatMap((group) =>
+      group.items.map((item) => item.id),
+    ),
+    gratitude_items: data.gratitudeItems.map((item) => item.id),
+    wishes: [
+      ...data.wishes.giftHints.map((item) => item.id),
+      ...data.wishes.secretWishes.map((item) => item.id),
+      ...data.wishes.sharedDreams.map((item) => item.id),
+    ],
+    memory_photos: data.memoryPhotos.map((item) => item.id),
+    footprints: data.footprints.map((item) => item.id),
+  };
+}
+
+function getDeletedIds(previousData, nextData) {
+  const previousIds = collectIds(previousData);
+  const nextIds = collectIds(nextData);
+
+  return Object.fromEntries(
+    Object.entries(previousIds).map(([table, ids]) => {
+      const nextIdSet = new Set(nextIds[table]);
+      return [table, ids.filter((id) => id && !nextIdSet.has(id))];
+    }),
+  );
+}
+
 export function DashboardDataProvider({ children }) {
   const [dashboardData, setDashboardData] = useState(readStoredData);
+  const [loadedAt, setLoadedAt] = useState(null);
   const [savedAt, setSavedAt] = useState(null);
   const [cloudStatus, setCloudStatus] = useState(
     isSupabaseConfigured ? "loading" : "demo",
@@ -454,42 +497,47 @@ export function DashboardDataProvider({ children }) {
     latestDataRef.current = dashboardData;
   }, [dashboardData]);
 
+  const refreshDashboardData = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setCloudStatus("demo");
+      setCloudError("");
+      setLoadedAt(new Date());
+      return normalizeDashboardData(defaultDashboardData);
+    }
+
+    try {
+      const cloudData = normalizeDashboardData(await fetchDashboardData());
+      latestDataRef.current = cloudData;
+      setDashboardData(cloudData);
+      setCloudStatus("cloud");
+      setCloudError("");
+      setLoadedAt(new Date());
+      return cloudData;
+    } catch (error) {
+      setCloudStatus("error");
+      setCloudError(error.message || "Could not load Supabase data.");
+      throw error;
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCloudData() {
-      if (!isSupabaseConfigured) {
-        setCloudStatus("demo");
-        return;
-      }
-
-      try {
-        const cloudData = normalizeDashboardData(await fetchDashboardData());
-        if (!isMounted) return;
-        latestDataRef.current = cloudData;
-        setDashboardData(cloudData);
-        setCloudStatus("cloud");
-        setCloudError("");
-        setSavedAt(new Date());
-      } catch (error) {
-        if (!isMounted) return;
-        setCloudStatus("error");
-        setCloudError(error.message || "Could not load Supabase data.");
-      }
-    }
-
-    loadCloudData();
-
+    refreshDashboardData().catch(() => {
+      if (!isMounted) return;
+    });
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshDashboardData]);
 
   const updateDashboardData = useCallback((updater) => {
     setDashboardData((currentData) => {
+      const previousData = normalizeDashboardData(currentData);
       const nextData = normalizeDashboardData(
-        typeof updater === "function" ? updater(cloneData(currentData)) : updater,
+        typeof updater === "function" ? updater(cloneData(previousData)) : updater,
       );
+      const deletedIds = getDeletedIds(previousData, nextData);
       latestDataRef.current = nextData;
 
       if (isSupabaseConfigured) {
@@ -498,7 +546,7 @@ export function DashboardDataProvider({ children }) {
 
         const saveTask = saveQueueRef.current
           .catch(() => {})
-          .then(() => saveDashboardData(nextData));
+          .then(() => saveDashboardData(nextData, deletedIds));
 
         saveQueueRef.current = saveTask;
 
@@ -538,6 +586,8 @@ export function DashboardDataProvider({ children }) {
       dashboardData,
       setDashboardData: updateDashboardData,
       resetToDefault,
+      refreshDashboardData,
+      loadedAt,
       savedAt,
       cloudStatus,
       cloudError,
@@ -548,6 +598,8 @@ export function DashboardDataProvider({ children }) {
       cloudStatus,
       cloudError,
       dashboardData,
+      loadedAt,
+      refreshDashboardData,
       resetToDefault,
       savedAt,
       updateDashboardData,

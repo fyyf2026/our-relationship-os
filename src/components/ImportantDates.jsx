@@ -1,12 +1,53 @@
 import { CalendarDays, Eye, Plus } from "lucide-react";
-import { useDashboardData } from "../data/dataStore.js";
+import { useState } from "react";
+import { useCurrentUser } from "../context/UserContext.jsx";
+import { createId, useDashboardData } from "../data/dataStore.js";
 import { getDaysUntil } from "../utils/dateUtils.js";
 import ActionButton from "./ActionButton.jsx";
+import EntryModal, {
+  ModalField,
+  ModalInput,
+  ModalSelect,
+} from "./EntryModal.jsx";
 import SectionCard from "./SectionCard.jsx";
 import StatusTag from "./StatusTag.jsx";
 
+const statusOptions = ["Upcoming", "Pending", "Completed"];
+
 export default function ImportantDates() {
-  const { dashboardData } = useDashboardData();
+  const { dashboardData, setDashboardData } = useDashboardData();
+  const { currentUser } = useCurrentUser();
+  const [isAdding, setIsAdding] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    date: "",
+    description: "",
+    status: "Upcoming",
+  });
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveDate = () => {
+    if (!currentUser || !form.title.trim()) return;
+
+    setDashboardData((data) => {
+      data.importantDates.push({
+        id: createId("date"),
+        title: form.title.trim(),
+        date: form.date,
+        description: form.description.trim(),
+        status: form.status,
+        visibility: "shared",
+        createdBy: currentUser.name,
+        lastEditedBy: currentUser.name,
+      });
+      return data;
+    });
+    setForm({ title: "", date: "", description: "", status: "Upcoming" });
+    setIsAdding(false);
+  };
 
   return (
     <SectionCard
@@ -15,8 +56,45 @@ export default function ImportantDates() {
       description="A shared space for anniversaries, dates, trips, and meaningful reminders."
       actionLabel="Add Date"
       actionIcon={Plus}
+      actionOnClick={() => setIsAdding(true)}
       className="scroll-mt-28"
     >
+      {isAdding ? (
+        <EntryModal
+          title="Add Date"
+          description={`Adding as ${currentUser?.name ?? "current user"}.`}
+          submitLabel="Save Date"
+          onCancel={() => setIsAdding(false)}
+          onSubmit={saveDate}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ModalField label="Title">
+              <ModalInput value={form.title} onChange={(value) => updateField("title", value)} />
+            </ModalField>
+            <ModalField label="Date">
+              <ModalInput
+                type="date"
+                value={form.date}
+                onChange={(value) => updateField("date", value)}
+              />
+            </ModalField>
+          </div>
+          <ModalField label="Description">
+            <ModalInput
+              value={form.description}
+              onChange={(value) => updateField("description", value)}
+            />
+          </ModalField>
+          <ModalField label="Status">
+            <ModalSelect
+              value={form.status}
+              options={statusOptions}
+              onChange={(value) => updateField("status", value)}
+            />
+          </ModalField>
+        </EntryModal>
+      ) : null}
+
       <div className="grid gap-3">
         {dashboardData.importantDates.map((date) => (
           <article

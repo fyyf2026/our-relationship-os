@@ -155,8 +155,7 @@
   }
 
   .identity-badge,
-  .owner-badge,
-  .view-only-badge {
+  .owner-badge {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
@@ -167,12 +166,6 @@
     font-size: 0.75rem;
     font-weight: 700;
     line-height: 1;
-  }
-
-  .view-only-badge {
-    border-color: rgba(217, 167, 176, 0.28);
-    background: rgba(245, 227, 231, 0.82);
-    color: #9e6f7a;
   }
 
   .identity-modal-backdrop {

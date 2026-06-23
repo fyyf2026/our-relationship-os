@@ -27,15 +27,8 @@ async function fetchTable(table, query = "select=*") {
   return supabaseRequest(apiPath(table, query));
 }
 
-async function deleteAll(table) {
-  await supabaseRequest(apiPath(table, "id=not.is.null"), {
-    method: "DELETE",
-    headers: { Prefer: "return=minimal" },
-  });
-}
-
 async function deleteRows(table, ids) {
-  if (!ids.length) return;
+  if (!ids?.length) return;
 
   await supabaseRequest(apiPath(table, `id=in.(${ids.join(",")})`), {
     method: "DELETE",
@@ -55,23 +48,11 @@ function upsertRows(table, rows, conflictKey = "id") {
   });
 }
 
-async function syncTable(table, rows) {
+async function syncTable(table, rows, deletedIds = []) {
   const nextRows = rows.filter((row) => row.id);
 
-  if (!nextRows.length) {
-    await deleteAll(table);
-    return;
-  }
-
   await upsertRows(table, nextRows);
-
-  const existingRows = await fetchTable(table, "select=id");
-  const nextIds = new Set(nextRows.map((row) => row.id));
-  const staleIds = existingRows
-    .map((row) => row.id)
-    .filter((id) => id && !nextIds.has(id));
-
-  await deleteRows(table, staleIds);
+  await deleteRows(table, deletedIds);
 }
 
 function groupNotesByOwner(rows, users) {
@@ -295,7 +276,7 @@ function dashboardToCloudRows(data) {
     })),
     conflict_entries: dashboardData.conflictEntries.map((item) => ({
       id: item.id,
-      date: item.date,
+      date: item.date || null,
       topic: item.topic,
       duration: item.duration,
       status: item.status,
@@ -426,19 +407,23 @@ export async function fetchDashboardData() {
   });
 }
 
-export async function saveDashboardData(data) {
+export async function saveDashboardData(data, deletedIds = {}) {
   if (!isSupabaseConfigured) return data;
 
   const rows = dashboardToCloudRows(data);
   await upsertRows("relationship_profile", rows.relationship_profile);
-  await syncTable("important_dates", rows.important_dates);
-  await syncTable("shared_notes", rows.shared_notes);
-  await syncTable("conflict_entries", rows.conflict_entries);
-  await syncTable("future_vision_items", rows.future_vision_items);
-  await syncTable("gratitude_items", rows.gratitude_items);
-  await syncTable("wishes", rows.wishes);
-  await syncTable("memory_photos", rows.memory_photos);
-  await syncTable("footprints", rows.footprints);
+  await syncTable("important_dates", rows.important_dates, deletedIds.important_dates);
+  await syncTable("shared_notes", rows.shared_notes, deletedIds.shared_notes);
+  await syncTable("conflict_entries", rows.conflict_entries, deletedIds.conflict_entries);
+  await syncTable(
+    "future_vision_items",
+    rows.future_vision_items,
+    deletedIds.future_vision_items,
+  );
+  await syncTable("gratitude_items", rows.gratitude_items, deletedIds.gratitude_items);
+  await syncTable("wishes", rows.wishes, deletedIds.wishes);
+  await syncTable("memory_photos", rows.memory_photos, deletedIds.memory_photos);
+  await syncTable("footprints", rows.footprints, deletedIds.footprints);
   await upsertRows("ai_coach_metrics", rows.ai_coach_metrics);
 
   return data;

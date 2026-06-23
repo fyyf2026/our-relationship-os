@@ -1,8 +1,15 @@
 import { Gift, Lock, Plus, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { useCurrentUser } from "../context/UserContext.jsx";
-import { useDashboardData } from "../data/dataStore.js";
+import { createId, useDashboardData } from "../data/dataStore.js";
 import { isDateUnlocked } from "../utils/dateUtils.js";
 import { canEditOwnedItem } from "../utils/permissionUtils.js";
+import EntryModal, {
+  ModalField,
+  ModalInput,
+  ModalSelect,
+  ModalTextArea,
+} from "./EntryModal.jsx";
 import SectionCard from "./SectionCard.jsx";
 import StatusTag from "./StatusTag.jsx";
 
@@ -23,7 +30,7 @@ function WishGroup({ title, description, icon: Icon, children }) {
   );
 }
 
-function CompactWish({ title, description, tag, ownerName, viewOnly, footer }) {
+function CompactWish({ title, description, tag, ownerName, footer }) {
   return (
     <article className="surface-row rounded-card p-4">
       <div className="mb-2 flex items-start justify-between gap-3">
@@ -33,7 +40,6 @@ function CompactWish({ title, description, tag, ownerName, viewOnly, footer }) {
       <p className="text-sm leading-6 text-muted">{description}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {ownerName ? <span className="owner-badge">Owner: {ownerName}</span> : null}
-        {viewOnly ? <span className="view-only-badge">View only</span> : null}
         {footer ? <span className="owner-badge">{footer}</span> : null}
       </div>
     </article>
@@ -41,13 +47,78 @@ function CompactWish({ title, description, tag, ownerName, viewOnly, footer }) {
 }
 
 export default function WishBox() {
-  const { dashboardData } = useDashboardData();
+  const { dashboardData, setDashboardData } = useDashboardData();
   const { currentUser } = useCurrentUser();
+  const [isAdding, setIsAdding] = useState(false);
+  const [form, setForm] = useState({
+    wishType: "Gift Hint",
+    title: "",
+    description: "",
+    category: "",
+    priority: "Medium",
+    unlockDate: "",
+    status: "Planned",
+  });
   const { giftHints, secretWishes, sharedDreams } = dashboardData.wishes;
   const { users } = dashboardData;
 
-  const openSettings = () => {
-    window.location.href = "/settings#wish-box-manager";
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      wishType: "Gift Hint",
+      title: "",
+      description: "",
+      category: "",
+      priority: "Medium",
+      unlockDate: "",
+      status: "Planned",
+    });
+  };
+
+  const saveWish = () => {
+    if (!currentUser || !form.title.trim()) return;
+
+    setDashboardData((data) => {
+      if (form.wishType === "Gift Hint") {
+        data.wishes.giftHints.push({
+          id: createId("gift"),
+          wishType: "gift_hint",
+          ownerId: currentUser.id,
+          ownerName: currentUser.name,
+          title: form.title.trim(),
+          description: form.description.trim(),
+          category: form.category.trim(),
+          priority: form.priority,
+          visibility: "visible_to_partner",
+        });
+      } else if (form.wishType === "Secret Wish") {
+        data.wishes.secretWishes.push({
+          id: createId("secret"),
+          wishType: "secret_wish",
+          ownerId: currentUser.id,
+          title: form.title.trim(),
+          description: form.description.trim(),
+          unlockDate: form.unlockDate,
+          visibility: "private_until_unlock",
+        });
+      } else {
+        data.wishes.sharedDreams.push({
+          id: createId("shared"),
+          wishType: "shared_dream",
+          title: form.title.trim(),
+          description: form.description.trim(),
+          status: form.status,
+          visibility: "shared",
+          lastEditedBy: currentUser.name,
+        });
+      }
+      return data;
+    });
+    resetForm();
+    setIsAdding(false);
   };
 
   return (
@@ -57,9 +128,74 @@ export default function WishBox() {
       description="A quiet place for hints, private hopes, and shared dreams."
       actionLabel="Add Wish"
       actionIcon={Plus}
-      actionOnClick={openSettings}
+      actionOnClick={() => setIsAdding(true)}
       className="scroll-mt-28"
     >
+      {isAdding ? (
+        <EntryModal
+          title="Add Wish"
+          description={`Adding as ${currentUser?.name ?? "current user"}.`}
+          submitLabel="Save Wish"
+          onCancel={() => setIsAdding(false)}
+          onSubmit={saveWish}
+        >
+          <ModalField label="Type">
+            <ModalSelect
+              value={form.wishType}
+              options={["Gift Hint", "Secret Wish", "Shared Dream"]}
+              onChange={(value) => updateField("wishType", value)}
+            />
+          </ModalField>
+          <ModalField label="Title">
+            <ModalInput value={form.title} onChange={(value) => updateField("title", value)} />
+          </ModalField>
+          <ModalField label="Description">
+            <ModalTextArea
+              value={form.description}
+              onChange={(value) => updateField("description", value)}
+            />
+          </ModalField>
+
+          {form.wishType === "Gift Hint" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ModalField label="Category">
+                <ModalInput
+                  value={form.category}
+                  onChange={(value) => updateField("category", value)}
+                />
+              </ModalField>
+              <ModalField label="Priority">
+                <ModalSelect
+                  value={form.priority}
+                  options={["High", "Medium", "Low"]}
+                  onChange={(value) => updateField("priority", value)}
+                />
+              </ModalField>
+            </div>
+          ) : null}
+
+          {form.wishType === "Secret Wish" ? (
+            <ModalField label="Unlock Date">
+              <ModalInput
+                type="date"
+                value={form.unlockDate}
+                onChange={(value) => updateField("unlockDate", value)}
+              />
+            </ModalField>
+          ) : null}
+
+          {form.wishType === "Shared Dream" ? (
+            <ModalField label="Status">
+              <ModalSelect
+                value={form.status}
+                options={["Planned", "In Progress", "Completed"]}
+                onChange={(value) => updateField("status", value)}
+              />
+            </ModalField>
+          ) : null}
+        </EntryModal>
+      ) : null}
+
       <div className="grid gap-4">
         <WishGroup
           title="Gift Hints"
@@ -83,7 +219,6 @@ export default function WishBox() {
                     description={`${wish.description} ${wish.category ? `(${wish.category})` : ""}`}
                     tag={wish.priority}
                     ownerName={wish.ownerName}
-                    viewOnly={!canEditOwnedItem(currentUser, wish)}
                   />
                 ))}
               </div>
@@ -118,7 +253,6 @@ export default function WishBox() {
                 }
                 tag={unlocked ? "Completed" : "Locked"}
                 ownerName={ownerName}
-                viewOnly={!isOwner}
               />
             );
           })}

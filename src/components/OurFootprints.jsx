@@ -2,7 +2,6 @@ import { MapPin, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useCurrentUser } from "../context/UserContext.jsx";
 import { createId, useDashboardData } from "../data/dataStore.js";
-import { canEditItem, getPermissionMessage } from "../utils/permissionUtils.js";
 import ActionButton from "./ActionButton.jsx";
 import SectionCard from "./SectionCard.jsx";
 
@@ -92,7 +91,7 @@ function FootprintForm({ onCancel, onSave }) {
 
 export default function OurFootprints() {
   const { dashboardData, setDashboardData } = useDashboardData();
-  const { currentUser, users } = useCurrentUser();
+  const { currentUser } = useCurrentUser();
   const [isAdding, setIsAdding] = useState(false);
   const mappedFootprints = useMemo(
     () => dashboardData.footprints.filter((item) => getCoordinate(item)),
@@ -126,7 +125,6 @@ export default function OurFootprints() {
 
   const deleteFootprint = (index) => {
     setDashboardData((data) => {
-      if (!canEditItem(currentUser, data.footprints[index])) return data;
       data.footprints.splice(index, 1);
       return data;
     });
@@ -207,8 +205,6 @@ export default function OurFootprints() {
 
         <div className="grid gap-3 md:grid-cols-2">
           {dashboardData.footprints.map((footprint, index) => {
-            const editable = canEditItem(currentUser, footprint);
-            const permissionMessage = getPermissionMessage(users, footprint);
             const isMapped = Boolean(getCoordinate(footprint));
 
             return (
@@ -223,8 +219,7 @@ export default function OurFootprints() {
                   <button
                     type="button"
                     aria-label="Delete footprint"
-                    title={!editable ? permissionMessage : "Delete footprint"}
-                    disabled={!editable}
+                    title="Delete footprint"
                     onClick={() => deleteFootprint(index)}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-900/10 bg-white/75 text-muted transition hover:border-primary/35 hover:text-primary disabled:cursor-not-allowed disabled:opacity-45"
                   >
@@ -241,7 +236,6 @@ export default function OurFootprints() {
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="owner-badge">Added by {footprint.addedBy}</span>
-                  {!editable ? <span className="view-only-badge">View only</span> : null}
                 </div>
               </div>
             );

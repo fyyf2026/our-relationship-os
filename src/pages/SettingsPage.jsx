@@ -15,7 +15,6 @@ import {
 } from "../data/dataStore.js";
 import {
   canEditItem,
-  getPermissionMessage,
   withLastEditedBy,
 } from "../utils/permissionUtils.js";
 import ActionButton from "../components/ActionButton.jsx";
@@ -158,6 +157,7 @@ export default function SettingsPage() {
     dashboardData,
     setDashboardData,
     resetToDefault,
+    loadedAt,
     savedAt,
     cloudError,
     cloudStatus,
@@ -167,6 +167,12 @@ export default function SettingsPage() {
   const { profile } = dashboardData;
   const partnerNames = `${profile.personAName} & ${profile.personBName}`;
   const daysTogether = calculateDaysTogether(profile.relationshipStartDate);
+  const sharedNotesCount =
+    dashboardData.sharedNotes.personA.length + dashboardData.sharedNotes.personB.length;
+  const wishesCount =
+    dashboardData.wishes.giftHints.length +
+    dashboardData.wishes.secretWishes.length +
+    dashboardData.wishes.sharedDreams.length;
 
   const updateProfile = (field, value) => {
     setDashboardData((data) => {
@@ -371,9 +377,11 @@ export default function SettingsPage() {
 
   const addNote = (personKey) => {
     setDashboardData((data) => {
-      if (!currentUser || currentUser.role !== personKey) return data;
-      data.sharedNotes[personKey].push({
-        id: createId(personKey === "personA" ? "note-a" : "note-b"),
+      if (!currentUser) return data;
+      const ownerKey = currentUser.role;
+      data.sharedNotes[ownerKey].push({
+        id: createId(ownerKey === "personA" ? "note-a" : "note-b"),
+        kind: "personal_note",
         ownerId: currentUser.id,
         authorName: currentUser.name,
         content: "",
@@ -500,6 +508,23 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <section className="rounded-panel border border-white/85 bg-white/72 p-4 shadow-soft backdrop-blur-xl">
+        <div className="grid gap-3 text-xs font-semibold text-muted sm:grid-cols-2 lg:grid-cols-4">
+          <span>Data source: {isCloudConfigured ? "Supabase" : "Demo"}</span>
+          <span>
+            Last loaded: {loadedAt ? loadedAt.toLocaleTimeString() : "Not loaded"}
+          </span>
+          <span>
+            Last saved: {savedAt ? savedAt.toLocaleTimeString() : "Not saved"}
+          </span>
+          <span>Last error: {cloudError || "None"}</span>
+          <span>importantDates: {dashboardData.importantDates.length}</span>
+          <span>sharedNotes: {sharedNotesCount}</span>
+          <span>wishes: {wishesCount}</span>
+          <span>footprints: {dashboardData.footprints.length}</span>
+        </div>
+      </section>
+
       <ManagerSection title="Relationship Profile">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Person A Name">
@@ -608,47 +633,29 @@ export default function SettingsPage() {
                 <ActionButton
                   icon={Plus}
                   onClick={() => addNote(personKey)}
-                  disabled={currentUser?.role !== personKey}
-                  title={
-                    currentUser?.role !== personKey
-                      ? `Only ${title.replace(" Notes", "")} can add here`
-                      : undefined
-                  }
                   className="min-h-9 px-3"
                 >
                   Add Note
                 </ActionButton>
               </div>
               <div className="grid gap-3">
-                {dashboardData.sharedNotes[personKey].map((note, index) => {
-                  const editable = canEditItem(currentUser, note);
-                  const message = getPermissionMessage(users, note);
-
-                  return (
+                {dashboardData.sharedNotes[personKey].map((note, index) => (
                     <div key={note.id} className="grid gap-2">
                       <div className="flex gap-2">
                         <TextInput
                           value={note.content}
-                          disabled={!editable}
-                          title={!editable ? message : undefined}
                           onChange={(value) => updateNote(personKey, index, value)}
                         />
                         <IconButton
                           label="Delete note"
-                          disabled={!editable}
-                          title={!editable ? message : undefined}
                           onClick={() => removeNote(personKey, index)}
                         />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <span className="owner-badge">Owner: {note.authorName}</span>
-                        {!editable ? (
-                          <span className="view-only-badge">View only</span>
-                        ) : null}
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
               </div>
             </div>
           ))}
@@ -657,12 +664,10 @@ export default function SettingsPage() {
 
       <ManagerSection
         title="Memory Photos"
-        description="Captions can only be edited by the person who uploaded the photo."
+        description="Manage saved photo captions and keep uploader credits visible."
       >
         <div className="grid gap-3 md:grid-cols-2">
           {dashboardData.memoryPhotos.map((photo, index) => {
-            const editable = canEditItem(currentUser, photo);
-            const message = getPermissionMessage(users, photo);
             const imageUrl = photo.imageUrl || photo.src;
 
             return (
@@ -679,21 +684,14 @@ export default function SettingsPage() {
                   <div className="grid gap-2">
                     <TextInput
                       value={photo.caption}
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onChange={(value) => updateMemoryPhoto(index, "caption", value)}
                     />
                     <div className="flex flex-wrap gap-2">
                       <span className="owner-badge">Uploaded by {photo.uploadedBy}</span>
-                      {!editable ? (
-                        <span className="view-only-badge">View only</span>
-                      ) : null}
                     </div>
                   </div>
                   <IconButton
                     label="Delete photo"
-                    disabled={!editable}
-                    title={!editable ? message : undefined}
                     onClick={() => removeMemoryPhoto(index)}
                   />
                 </div>
@@ -706,31 +704,23 @@ export default function SettingsPage() {
       <ManagerSection
         id="footprints-manager"
         title="Our Footprints"
-        description="Manage cities you have visited together. Only the person who added a footprint can edit or delete it."
+        description="Manage cities you have visited together."
         actionLabel="Add City"
         onAdd={addFootprint}
       >
         <div className="grid gap-3">
-          {dashboardData.footprints.map((item, index) => {
-            const editable = canEditItem(currentUser, item);
-            const message = getPermissionMessage(users, item);
-
-            return (
+          {dashboardData.footprints.map((item, index) => (
               <RowCard key={item.id}>
                 <div className="grid gap-3 lg:grid-cols-[1fr_0.45fr_0.8fr_1.4fr_auto] lg:items-end">
                   <Field label="City">
                     <TextInput
                       value={item.city}
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onChange={(value) => updateFootprint(index, "city", value)}
                     />
                   </Field>
                   <Field label="State">
                     <TextInput
                       value={item.state}
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onChange={(value) =>
                         updateFootprint(index, "state", value.toUpperCase())
                       }
@@ -740,8 +730,6 @@ export default function SettingsPage() {
                     <TextInput
                       type="date"
                       value={item.dateVisited}
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onChange={(value) =>
                         updateFootprint(index, "dateVisited", value)
                       }
@@ -750,15 +738,11 @@ export default function SettingsPage() {
                   <Field label="Note">
                     <TextInput
                       value={item.note}
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onChange={(value) => updateFootprint(index, "note", value)}
                     />
                   </Field>
                   <IconButton
                     label="Delete footprint"
-                    disabled={!editable}
-                    title={!editable ? message : undefined}
                     onClick={() => removeFootprint(index)}
                   />
                 </div>
@@ -767,13 +751,9 @@ export default function SettingsPage() {
                     <MapPin className="mr-1 h-3 w-3" />
                     Added by {item.addedBy}
                   </span>
-                  {!editable ? (
-                    <span className="view-only-badge">View only</span>
-                  ) : null}
                 </div>
               </RowCard>
-            );
-          })}
+            ))}
         </div>
       </ManagerSection>
 
@@ -930,52 +910,36 @@ export default function SettingsPage() {
         actionLabel="Add Gratitude"
         onAdd={addGratitude}
       >
-        <div className="grid gap-3">
-          {dashboardData.gratitudeItems.map((item, index) => (
-            <RowCard key={item.id}>
-              {(() => {
-                const editable = canEditItem(currentUser, item);
-                const message = getPermissionMessage(users, item);
-
-                return (
-              <div className="grid gap-3 lg:grid-cols-[0.8fr_1.7fr_auto] lg:items-end">
-                <Field label="Author">
-                  <TextInput
-                    value={item.authorName}
-                    disabled={!editable}
-                    title={!editable ? message : undefined}
-                    onChange={(value) =>
-                      updateListItem("gratitudeItems", index, "authorName", value)
-                    }
+          <div className="grid gap-3">
+            {dashboardData.gratitudeItems.map((item, index) => (
+              <RowCard key={item.id}>
+                <div className="grid gap-3 lg:grid-cols-[0.8fr_1.7fr_auto] lg:items-end">
+                  <Field label="Author">
+                    <TextInput
+                      value={item.authorName}
+                      onChange={(value) =>
+                        updateListItem("gratitudeItems", index, "authorName", value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Message">
+                    <TextInput
+                      value={item.message}
+                      onChange={(value) =>
+                        updateListItem("gratitudeItems", index, "message", value)
+                      }
+                    />
+                  </Field>
+                  <IconButton
+                    label="Delete gratitude"
+                    onClick={() => removeListItem("gratitudeItems", index)}
                   />
-                </Field>
-                <Field label="Message">
-                  <TextInput
-                    value={item.message}
-                    disabled={!editable}
-                    title={!editable ? message : undefined}
-                    onChange={(value) =>
-                      updateListItem("gratitudeItems", index, "message", value)
-                    }
-                  />
-                </Field>
-                <IconButton
-                  label="Delete gratitude"
-                  disabled={!editable}
-                  title={!editable ? message : undefined}
-                  onClick={() => removeListItem("gratitudeItems", index)}
-                />
-              </div>
-                );
-              })()}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="owner-badge">Owner: {item.authorName}</span>
-                {!canEditItem(currentUser, item) ? (
-                  <span className="view-only-badge">View only</span>
-                ) : null}
-              </div>
-            </RowCard>
-          ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="owner-badge">Owner: {item.authorName}</span>
+                </div>
+              </RowCard>
+            ))}
         </div>
       </ManagerSection>
 
@@ -1000,17 +964,10 @@ export default function SettingsPage() {
             <div className="grid gap-3">
               {dashboardData.wishes.giftHints.map((item, index) => (
                 <RowCard key={item.id}>
-                  {(() => {
-                    const editable = canEditItem(currentUser, item);
-                    const message = getPermissionMessage(users, item);
-
-                    return (
                   <div className="grid gap-3 lg:grid-cols-[1fr_1.25fr_0.75fr_0.7fr_auto] lg:items-end">
                     <Field label="Title">
                       <TextInput
                         value={item.title}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem("giftHints", index, "title", value)
                         }
@@ -1019,8 +976,6 @@ export default function SettingsPage() {
                     <Field label="Description">
                       <TextInput
                         value={item.description}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem(
                             "giftHints",
@@ -1034,8 +989,6 @@ export default function SettingsPage() {
                     <Field label="Category">
                       <TextInput
                         value={item.category}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem("giftHints", index, "category", value)
                         }
@@ -1045,8 +998,6 @@ export default function SettingsPage() {
                       <SelectInput
                         value={item.priority}
                         options={giftPriorityOptions}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem("giftHints", index, "priority", value)
                         }
@@ -1054,18 +1005,11 @@ export default function SettingsPage() {
                     </Field>
                     <IconButton
                       label="Delete gift hint"
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onClick={() => removeWishItem("giftHints", index)}
                     />
                   </div>
-                    );
-                  })()}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="owner-badge">Owner: {item.ownerName}</span>
-                    {!canEditItem(currentUser, item) ? (
-                      <span className="view-only-badge">View only</span>
-                    ) : null}
                   </div>
                 </RowCard>
               ))}
@@ -1087,20 +1031,10 @@ export default function SettingsPage() {
             <div className="grid gap-3">
               {dashboardData.wishes.secretWishes.map((item, index) => (
                 <RowCard key={item.id}>
-                  {(() => {
-                    const editable = canEditItem(currentUser, item);
-                    const message = getPermissionMessage(users, item);
-                    const ownerName =
-                      users.find((user) => user.id === item.ownerId)?.name ??
-                      "Owner";
-
-                    return (
                   <div className="grid gap-3 lg:grid-cols-[1fr_1.4fr_0.8fr_auto] lg:items-end">
                     <Field label="Title">
                       <TextInput
                         value={item.title}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem("secretWishes", index, "title", value)
                         }
@@ -1109,8 +1043,6 @@ export default function SettingsPage() {
                     <Field label="Description">
                       <TextInput
                         value={item.description}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem(
                             "secretWishes",
@@ -1125,8 +1057,6 @@ export default function SettingsPage() {
                       <TextInput
                         type="date"
                         value={item.unlockDate}
-                        disabled={!editable}
-                        title={!editable ? message : undefined}
                         onChange={(value) =>
                           updateWishItem(
                             "secretWishes",
@@ -1139,20 +1069,13 @@ export default function SettingsPage() {
                     </Field>
                     <IconButton
                       label="Delete secret wish"
-                      disabled={!editable}
-                      title={!editable ? message : undefined}
                       onClick={() => removeWishItem("secretWishes", index)}
                     />
                   </div>
-                    );
-                  })()}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="owner-badge">
                       Owner: {users.find((user) => user.id === item.ownerId)?.name ?? "Owner"}
                     </span>
-                    {!canEditItem(currentUser, item) ? (
-                      <span className="view-only-badge">View only</span>
-                    ) : null}
                   </div>
                 </RowCard>
               ))}

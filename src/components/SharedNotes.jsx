@@ -1,17 +1,42 @@
 import { NotebookPen, Plus } from "lucide-react";
+import { useState } from "react";
 import { useCurrentUser } from "../context/UserContext.jsx";
-import { useDashboardData } from "../data/dataStore.js";
-import { canEditOwnedItem } from "../utils/permissionUtils.js";
+import { createId, useDashboardData } from "../data/dataStore.js";
+import EntryModal, {
+  ModalField,
+  ModalTextArea,
+} from "./EntryModal.jsx";
 import SectionCard from "./SectionCard.jsx";
 
 export default function SharedNotes() {
-  const { dashboardData } = useDashboardData();
+  const { dashboardData, setDashboardData } = useDashboardData();
   const { currentUser } = useCurrentUser();
+  const [isAdding, setIsAdding] = useState(false);
+  const [content, setContent] = useState("");
   const { profile, sharedNotes } = dashboardData;
   const noteColumns = [
     { person: profile.personAName, notes: sharedNotes.personA },
     { person: profile.personBName, notes: sharedNotes.personB },
   ];
+
+  const saveNote = () => {
+    if (!currentUser || !content.trim()) return;
+
+    setDashboardData((data) => {
+      const personKey = currentUser.role;
+      data.sharedNotes[personKey].push({
+        id: createId(personKey === "personA" ? "note-a" : "note-b"),
+        kind: "personal_note",
+        ownerId: currentUser.id,
+        authorName: currentUser.name,
+        content: content.trim(),
+        visibility: "visible_to_partner",
+      });
+      return data;
+    });
+    setContent("");
+    setIsAdding(false);
+  };
 
   return (
     <SectionCard
@@ -19,7 +44,26 @@ export default function SharedNotes() {
       description="Things we want each other to remember."
       actionLabel="Add Note"
       actionIcon={Plus}
+      actionOnClick={() => setIsAdding(true)}
     >
+      {isAdding ? (
+        <EntryModal
+          title="Add Note"
+          description={`Posting as ${currentUser?.name ?? "current user"}.`}
+          submitLabel="Save Note"
+          onCancel={() => setIsAdding(false)}
+          onSubmit={saveNote}
+        >
+          <ModalField label="Note content">
+            <ModalTextArea
+              value={content}
+              onChange={setContent}
+              placeholder="What should we remember?"
+            />
+          </ModalField>
+        </EntryModal>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2">
         {noteColumns.map(({ person, notes }) => (
           <div key={person} className="rounded-[24px] bg-white/42 p-4">
@@ -38,14 +82,6 @@ export default function SharedNotes() {
                   <p>{note.content}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="owner-badge">Owner: {note.authorName}</span>
-                    {!canEditOwnedItem(currentUser, note) ? (
-                      <span
-                        className="view-only-badge"
-                        title={`Only ${note.authorName} can edit this`}
-                      >
-                        View only
-                      </span>
-                    ) : null}
                   </div>
                 </article>
               ))}

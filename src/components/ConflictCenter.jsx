@@ -1,11 +1,60 @@
 import { Brain, Eye, MessageCircle, Plus } from "lucide-react";
-import { useDashboardData } from "../data/dataStore.js";
+import { useState } from "react";
+import { useCurrentUser } from "../context/UserContext.jsx";
+import { createId, useDashboardData } from "../data/dataStore.js";
 import ActionButton from "./ActionButton.jsx";
+import EntryModal, {
+  ModalField,
+  ModalInput,
+  ModalSelect,
+} from "./EntryModal.jsx";
 import SectionCard from "./SectionCard.jsx";
 import StatusTag from "./StatusTag.jsx";
 
 export default function ConflictCenter() {
-  const { dashboardData } = useDashboardData();
+  const { dashboardData, setDashboardData } = useDashboardData();
+  const { currentUser } = useCurrentUser();
+  const [isAdding, setIsAdding] = useState(false);
+  const [form, setForm] = useState({
+    date: "",
+    topic: "",
+    duration: "",
+    status: "Resolved",
+    resolution: "",
+    rewardPenalty: "",
+  });
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveConflict = () => {
+    if (!currentUser || !form.topic.trim()) return;
+
+    setDashboardData((data) => {
+      data.conflictEntries.unshift({
+        id: createId("conflict"),
+        date: form.date,
+        topic: form.topic.trim(),
+        duration: form.duration.trim(),
+        status: form.status,
+        resolution: form.resolution.trim(),
+        rewardPenalty: form.rewardPenalty.trim(),
+        visibility: "shared",
+        lastEditedBy: currentUser.name,
+      });
+      return data;
+    });
+    setForm({
+      date: "",
+      topic: "",
+      duration: "",
+      status: "Resolved",
+      resolution: "",
+      rewardPenalty: "",
+    });
+    setIsAdding(false);
+  };
 
   return (
     <SectionCard
@@ -14,9 +63,54 @@ export default function ConflictCenter() {
       description="A safe place to understand, repair, and grow after disagreements."
       actionLabel="Start Reflection"
       actionIcon={Plus}
+      actionOnClick={() => setIsAdding(true)}
       actionVariant="primary"
       className="scroll-mt-28"
     >
+      {isAdding ? (
+        <EntryModal
+          title="Start Reflection"
+          description={`Adding as ${currentUser?.name ?? "current user"}.`}
+          submitLabel="Save Reflection"
+          onCancel={() => setIsAdding(false)}
+          onSubmit={saveConflict}
+        >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <ModalField label="Date">
+              <ModalInput value={form.date} onChange={(value) => updateField("date", value)} />
+            </ModalField>
+            <ModalField label="Topic">
+              <ModalInput value={form.topic} onChange={(value) => updateField("topic", value)} />
+            </ModalField>
+            <ModalField label="Duration">
+              <ModalInput
+                value={form.duration}
+                onChange={(value) => updateField("duration", value)}
+              />
+            </ModalField>
+          </div>
+          <ModalField label="Status">
+            <ModalSelect
+              value={form.status}
+              options={["Resolved", "Pending"]}
+              onChange={(value) => updateField("status", value)}
+            />
+          </ModalField>
+          <ModalField label="Resolution">
+            <ModalInput
+              value={form.resolution}
+              onChange={(value) => updateField("resolution", value)}
+            />
+          </ModalField>
+          <ModalField label="Reward / Penalty">
+            <ModalInput
+              value={form.rewardPenalty}
+              onChange={(value) => updateField("rewardPenalty", value)}
+            />
+          </ModalField>
+        </EntryModal>
+      ) : null}
+
       <div className="overflow-x-auto rounded-[24px] border border-stone-900/5 bg-white/52">
         <table className="min-w-[980px] w-full text-left text-sm">
           <thead className="border-b border-stone-900/5 bg-[#FBF8F4] text-xs font-semibold uppercase text-muted">

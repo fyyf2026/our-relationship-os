@@ -1,5 +1,12 @@
 import { Plus, Sparkles } from "lucide-react";
-import { useDashboardData } from "../data/dataStore.js";
+import { useState } from "react";
+import { useCurrentUser } from "../context/UserContext.jsx";
+import { createId, useDashboardData } from "../data/dataStore.js";
+import EntryModal, {
+  ModalField,
+  ModalInput,
+  ModalSelect,
+} from "./EntryModal.jsx";
 import SectionCard from "./SectionCard.jsx";
 
 const toneStyles = {
@@ -9,7 +16,47 @@ const toneStyles = {
 };
 
 export default function FutureVision() {
-  const { dashboardData } = useDashboardData();
+  const { dashboardData, setDashboardData } = useDashboardData();
+  const { currentUser } = useCurrentUser();
+  const [isAdding, setIsAdding] = useState(false);
+  const [form, setForm] = useState({
+    category: dashboardData.futureVision[0]?.title ?? "Travel Dreams",
+    title: "",
+    status: "Planned",
+  });
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveDream = () => {
+    if (!currentUser || !form.title.trim()) return;
+
+    setDashboardData((data) => {
+      const groupIndex = data.futureVision.findIndex(
+        (group) => group.title === form.category,
+      );
+      const targetIndex = groupIndex >= 0 ? groupIndex : 0;
+      data.futureVision[targetIndex].items.push({
+        id: createId("future-item"),
+        text: form.title.trim(),
+        status: form.status,
+        visibility: "shared",
+        lastEditedBy: currentUser.name,
+      });
+      data.futureVision[targetIndex].total = Math.max(
+        Number(data.futureVision[targetIndex].total) || 0,
+        data.futureVision[targetIndex].items.length,
+      );
+      return data;
+    });
+    setForm({
+      category: dashboardData.futureVision[0]?.title ?? "Travel Dreams",
+      title: "",
+      status: "Planned",
+    });
+    setIsAdding(false);
+  };
 
   return (
     <SectionCard
@@ -18,8 +65,37 @@ export default function FutureVision() {
       description="Dreams, plans, and little promises for the life we are building."
       actionLabel="Add Dream"
       actionIcon={Plus}
+      actionOnClick={() => setIsAdding(true)}
       className="scroll-mt-28"
     >
+      {isAdding ? (
+        <EntryModal
+          title="Add Dream"
+          description={`Adding as ${currentUser?.name ?? "current user"}.`}
+          submitLabel="Save Dream"
+          onCancel={() => setIsAdding(false)}
+          onSubmit={saveDream}
+        >
+          <ModalField label="Category">
+            <ModalSelect
+              value={form.category}
+              options={dashboardData.futureVision.map((group) => group.title)}
+              onChange={(value) => updateField("category", value)}
+            />
+          </ModalField>
+          <ModalField label="Title">
+            <ModalInput value={form.title} onChange={(value) => updateField("title", value)} />
+          </ModalField>
+          <ModalField label="Status">
+            <ModalSelect
+              value={form.status}
+              options={["Planned", "In Progress", "Completed"]}
+              onChange={(value) => updateField("status", value)}
+            />
+          </ModalField>
+        </EntryModal>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-3">
         {dashboardData.futureVision.map((group) => {
           const total = Math.max(Number(group.total) || group.items.length || 1, 1);
